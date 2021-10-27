@@ -1,5 +1,6 @@
 import abc
 from ..utils.constants import config, ImageRegistry, TriggerColors
+from .angler import Angler
 from .sight import Eyes
 from .mobility import Legs
 from .voice import Voice
@@ -40,6 +41,13 @@ class VoiceTrainer(CaptainTrainer):
 
     def train(self):
         self.captain.voice = Voice()
+
+
+class FishingTrainer(CaptainTrainer):
+    """ Trainer which provides an instance of the Angler ability """
+
+    def train(self):
+        self.captain.angler = Angler()
 
 
 __all__ = ['SightTrainer', 'MovementTrainer', 'VoiceTrainer']

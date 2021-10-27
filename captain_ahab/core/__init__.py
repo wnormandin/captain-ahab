@@ -1,7 +1,8 @@
 import logging
 from queue import PriorityQueue
 from .actions import *
-from .trainers import SightTrainer, MovementTrainer, VoiceTrainer
+from .trainers import SightTrainer, MovementTrainer, VoiceTrainer, FishingTrainer
+from .angler import Angler
 from .sight import Eyes
 from .mobility import Legs
 from .voice import Voice
@@ -25,7 +26,13 @@ class CaptainAhab:
         self._eyes = None
         self._legs = None
         self._voice = None
+        self._angler = None
         logger.debug('CaptainAhab lives')
+        self.__initialized = False
+
+    @property
+    def ready(self):
+        return self.__initialized
 
     @property
     def eyes(self):
@@ -57,15 +64,26 @@ class CaptainAhab:
         self._voice = new_voice
         logger.debug('CaptainAhab learned to speak (new Voice received)')
 
+    @property
+    def angler(self):
+        return self._angler
+
+    @angler.setter
+    def angler(self, new_angler):
+        assert isinstance(new_angler, Angler)
+        self._angler = new_angler
+        logger.debug('CaptainAhab learned to fish (new Angler created)')
+
     async def train(self):
         """ Training will initialize _eyes/_legs/_voice, etc """
 
         logger.debug('CaptainAhab is going in for training')
-        for trainer_cls in (SightTrainer, MovementTrainer, VoiceTrainer):
+        for trainer_cls in (SightTrainer, MovementTrainer, VoiceTrainer, FishingTrainer):
             trainer = trainer_cls(captain=self)
             trainer.train()
 
         logger.debug('CaptainAhab has finished training')
+        self.__initialized = True
 
     async def perform_next_action(self):
         try:

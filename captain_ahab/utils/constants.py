@@ -20,12 +20,14 @@ class InputCode(enum.Enum):
 
 # Add to this enum to learn new images
 class ImageRegistry(enum.Enum):
+    # Fishing images
     line_cast = pathlib.Path('../images/line_cast.jpg')
     fish_hooked = pathlib.Path('../images/fish_hooked.jpg')
 
 
 # Add to this enum to learn more triggers
 class TriggerColors(enum.Enum):
+    # Fishing colors
     safe_tension = (4, 227, 162)
     medium_tension = (230, 110, 22)
     unsafe_tension = (109, 18, 21)
