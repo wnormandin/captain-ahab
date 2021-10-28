@@ -1,17 +1,20 @@
 import logging
 from queue import PriorityQueue
+from ..utils import Singleton
 from .actions import *
 from .trainers import SightTrainer, MovementTrainer, VoiceTrainer, FishingTrainer
 from .angler import Angler
 from .sight import Eyes
 from .mobility import Legs
 from .voice import Voice
+from .cortex import Cortex
+from .liaison import AnimaLiaison
 
 
 logger = logging.getLogger(__name__)
 
 
-class CaptainAhab:
+class CaptainAhab(metaclass=Singleton):
     """
     CaptainAhab is an automaton designed to streamline fishing activities in New World
 
@@ -19,60 +22,31 @@ class CaptainAhab:
     components.
     """
 
+    @classmethod
+    def run(cls, x, y, w, h):
+        operator = AnimaLiaison(captain=cls(x, y, w, h))
+        operator.dispatch()
+
     def __init__(self, visual_x, visual_y, visual_width, visual_height):
         self.action_queue = PriorityQueue()
         self.action_wait_timeout = 0.5
         self.visual_field = (visual_x, visual_y, visual_width, visual_height)
-        self._eyes = None
-        self._legs = None
-        self._voice = None
-        self._angler = None
+        self.eyes = None
+        self.legs = None
+        self.voice = None
+        self.angler = None
+        self.cortex = Cortex()
         logger.debug('CaptainAhab lives')
         self.__initialized = False
+        self.dead = False
 
     @property
     def ready(self):
         return self.__initialized
 
-    @property
-    def eyes(self):
-        return self._eyes
-
-    @eyes.setter
-    def eyes(self, new_eyes: Eyes):
-        assert isinstance(new_eyes, Eyes)
-        self._eyes = new_eyes
-        logger.debug('CaptainAhab can see (new Eyes received)')
-
-    @property
-    def legs(self):
-        return self._legs
-
-    @legs.setter
-    def legs(self, new_legs):
-        assert isinstance(new_legs, Legs)
-        self._legs = new_legs
-        logger.debug('CaptainAhab grew legs (new Legs received)')
-
-    @property
-    def voice(self):
-        return self._voice
-
-    @voice.setter
-    def voice(self, new_voice):
-        assert isinstance(new_voice, Voice)
-        self._voice = new_voice
-        logger.debug('CaptainAhab learned to speak (new Voice received)')
-
-    @property
-    def angler(self):
-        return self._angler
-
-    @angler.setter
-    def angler(self, new_angler):
-        assert isinstance(new_angler, Angler)
-        self._angler = new_angler
-        logger.debug('CaptainAhab learned to fish (new Angler created)')
+    async def update(self):
+        await self.cortex.update()
+        await self.eyes.look()
 
     async def train(self):
         """ Training will initialize _eyes/_legs/_voice, etc """

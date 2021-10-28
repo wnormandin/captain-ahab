@@ -50,4 +50,4 @@ class FishingTrainer(CaptainTrainer):
         self.captain.angler = Angler()
 
 
-__all__ = ['SightTrainer', 'MovementTrainer', 'VoiceTrainer']
+__all__ = ['SightTrainer', 'MovementTrainer', 'VoiceTrainer', 'FishingTrainer']

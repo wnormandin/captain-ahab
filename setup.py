@@ -8,7 +8,8 @@ install_requires = (
     'numpy',
     'opencv-python',
     'pillow',
-    'click'
+    'click',
+    'click-log'
 )
 
 setup(

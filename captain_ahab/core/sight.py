@@ -48,7 +48,7 @@ class Eyes:
         return True
 
     def learn_image(self, image_key, image_path):
-        self._known_images[image_key] = cv.imread(image_path)
+        self._known_images[image_key] = cv.imread(str(image_path))
 
     def learn_trigger(self, trigger_key, trigger_rgb):
         self._known_triggers[trigger_key] = trigger_rgb
