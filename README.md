@@ -62,6 +62,22 @@ log_level = DEBUG
 
 # When set, save log entries at the given path
 log_file = captainslog.txt
+
+# Flag indicating whether to log output to the console
+console_logging = yes
+
+[fishing]
+# Reel burst lengths
+reel_delay_min = 1.1
+reel_delay_max = 1.7
+
+# Hook click length
+hook_delay_min = 0.1
+hook_delay_max = 0.4
+
+# Cast length
+cast_delay_min = 0.9
+cast_delay_max = 1.8
 ```
 
 ## Running the captain
