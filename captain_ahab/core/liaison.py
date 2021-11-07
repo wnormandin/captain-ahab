@@ -1,5 +1,10 @@
 import asyncio
+import logging
+from queue import Empty
 from . import randomizer
+
+
+logger = logging.getLogger(__name__)
 
 
 class AnimaLiaison:
@@ -20,20 +25,30 @@ class AnimaLiaison:
 
     def dispatch(self):
         """ This is the application entry point where the `operate` coroutine is invoked """
-        asyncio.run(self.operate())
+        try:
+            asyncio.run(self.operate())
+        except (KeyboardInterrupt, SystemExit):
+            self.captain.kill()
+            logger.debug('Exiting')
 
     async def operate(self):
         """ Main logic loop """
 
-        while not self.captain.dead:
+        while self.captain.alive:
             if not self.captain.ready:
                 await self.captain.train()
 
-            # start a task to update the captain and his timepieces
-            # update_task = asyncio.create_task(self.captain.update())
+            await self.captain.update()
 
-            # await update_task
-            self.captain.dead = True
+            self.captain.look()
+
+            try:
+                while True:
+                    result = await self.captain.perform_next_action()
+                    if result is not None:
+                        await result()
+            except Empty:
+                logger.debug(f'No more actions in queue')
 
             # Wait a random amount before proceeding
             await asyncio.sleep(randomizer.random_wait())

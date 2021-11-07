@@ -4,4 +4,4 @@ from captain_ahab.core import CaptainAhab
 
 
 if __name__ == '__main__':
-    CaptainAhab.run(500, 500, 100, 250)
+    CaptainAhab.run(250, 250, 1550, 1550)

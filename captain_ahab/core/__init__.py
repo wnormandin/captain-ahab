@@ -1,6 +1,8 @@
 import logging
-from queue import PriorityQueue
+from typing import Coroutine
+from queue import PriorityQueue, Empty
 from ..utils import Singleton
+from ..utils.constants import SAMPLE_X, SAMPLE_Y, SAMPLE_W, SAMPLE_H
 from .actions import *
 from .trainers import SightTrainer, MovementTrainer, VoiceTrainer, FishingTrainer
 from .angler import Angler
@@ -23,9 +25,13 @@ class CaptainAhab(metaclass=Singleton):
     """
 
     @classmethod
-    def run(cls, x, y, w, h):
-        operator = AnimaLiaison(captain=cls(x, y, w, h))
-        operator.dispatch()
+    def run(cls, x=None, y=None, w=None, h=None):
+        x = x or SAMPLE_X
+        y = y or SAMPLE_Y
+        w = w or SAMPLE_W
+        h = h or SAMPLE_H
+        captain = cls(x, y, w, h)
+        AnimaLiaison(captain=captain).dispatch()
 
     def __init__(self, visual_x, visual_y, visual_width, visual_height):
         self.action_queue = PriorityQueue()
@@ -38,15 +44,25 @@ class CaptainAhab(metaclass=Singleton):
         self.cortex = Cortex()
         logger.debug('CaptainAhab lives')
         self.__initialized = False
-        self.dead = False
+        self.__dead = False
 
     @property
     def ready(self):
         return self.__initialized
 
+    @property
+    def alive(self):
+        return not self.__dead
+
+    def kill(self):
+        logger.info(f'CaptainAhab has died')
+        self.__dead = True
+
     async def update(self):
+        if self.__dead:
+            return
+
         await self.cortex.update()
-        await self.eyes.look()
 
     async def train(self):
         """ Training will initialize _eyes/_legs/_voice, etc """
@@ -59,53 +75,65 @@ class CaptainAhab(metaclass=Singleton):
         logger.debug('CaptainAhab has finished training')
         self.__initialized = True
 
-    async def perform_next_action(self):
+    async def perform_next_action(self) -> Coroutine:
         try:
             queued_item = self.action_queue.get(timeout=self.action_wait_timeout)
-            queued_item.action.invoke()
+            result = queued_item.action.invoke()
             self.action_queue.task_done()
-        except Exception as e:
-            pass
+            return result
+        except Empty:
+            raise
+        except Exception:
+            logger.exception(f'Error during queued task')
+            self.kill()
 
-    async def queue_action(self, action_cls, priority=None):
-        self.action_queue.put(PrioritizedAction(priority=priority or action_cls.default_priority, action=action_cls()))
+    def purge_queue(self):
+        with self.action_queue.mutex:
+            n = self.action_queue.queue.clear()
+            logger.debug(f'Purged queue: {n}')
 
-    async def queue_actions(self, action_list, priority=None):
+    def queue_action(self, action_cls, priority=None):
+        action = action_cls(captain=self)
+        self.action_queue.put(PrioritizedAction(priority=priority or action_cls.default_priority,
+                                                action=action))
+        logger.debug(f'Queued {action}')
+
+    def queue_actions(self, action_list, priority=None):
         for action_cls in action_list:
-            await self.queue_action(action_cls=action_cls, priority=priority)
+            self.queue_action(action_cls=action_cls, priority=priority)
 
-    async def cast(self):
-        await self.queue_action(CastLine)
+    def cast(self):
+        self.queue_actions([CastLine, Wait])
 
-    async def hook(self):
-        await self.queue_action(HookFish)
+    def hook(self):
+        self.queue_action(HookFish)
 
-    async def reel(self):
-        await self.queue_action(ReelIn)
+    def reel(self):
+        self.queue_action(ReelIn)
 
-    async def release(self):
-        await self.queue_action(ReleaseTension)
+    def release(self):
+        self.queue_actions([ReleaseTension, Wait])
 
-    async def wait(self):
-        await self.queue_action(Wait)
+    def wait(self):
+        self.queue_action(Wait)
 
-    async def repair(self):
-        await self.queue_action(RepairGear)
+    def repair(self):
+        self.queue_action(RepairGear)
 
-    async def bait(self):
-        await self.queue_action(EquipBait)
+    def bait(self):
+        self.queue_action(EquipBait)
 
-    async def shift(self):
-        await self.queue_action(ShiftPosition)
+    def shift(self):
+        self.queue_action(ShiftPosition)
 
-    async def move(self):
-        await self.queue_action(Move)
+    def move(self):
+        self.queue_actions([Move, Wait])
 
-    async def speak(self):
-        await self.queue_action(Speak)
+    def speak(self):
+        self.queue_actions([Speak, Wait])
 
-    async def look(self):
-        await self.queue_action(Look)
+    def look(self):
+        self.queue_action(Look)
 
 
 __all__ = ['CaptainAhab']

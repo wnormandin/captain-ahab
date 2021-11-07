@@ -1,8 +1,14 @@
 import abc
+import logging
 import time
-import win32api, win32con
+import win32api
+import win32con
 from dataclasses import dataclass, field
-from ..utils.constants import InputCode
+from ..utils.constants import InputCode, TriggerColors, ImageRegistry, VERBOSITY, fishing_config
+from .randomizer import random_float, random_wait
+
+
+logger = logging.getLogger(__name__)
 
 
 class Action(metaclass=abc.ABCMeta):
@@ -10,9 +16,13 @@ class Action(metaclass=abc.ABCMeta):
 
     default_priority = 3
 
-    def __init__(self):
+    def __init__(self, captain):
         self.__args = set()
         self.__kwargs = {}
+        self.captain = captain
+
+    def __str__(self):
+        return f'action:{self.__class__.__name__}'
 
     @property
     def args(self) -> list:
@@ -60,9 +70,16 @@ class Action(metaclass=abc.ABCMeta):
     def wait(duration):
         time.sleep(duration)
 
+    @staticmethod
+    def wait_range(minimum=0.0, maximum=1.0):
+        time.sleep(random_float(minimum=minimum, maximum=maximum))
+
     def invoke(self):
+        if VERBOSITY >= 3:
+            logger.debug(f'{self} invoked')
+
         self._prepare()
-        self._perform_action(*self.args, **self.kwargs)
+        return self._perform_action(*self.args, **self.kwargs)
 
     def click_at(self, position, duration=0.05):
         self.point_mouse(position)
@@ -76,6 +93,10 @@ class Action(metaclass=abc.ABCMeta):
         self.wait(duration)
         self.release_key(key)
 
+    def random_keystroke(self, key, burst_min, burst_max):
+        duration = random_float(burst_min, burst_max)
+        self.keystroke(key, duration=duration)
+
 
 @dataclass(order=True)
 class PrioritizedAction:
@@ -83,28 +104,36 @@ class PrioritizedAction:
     action: Action = field(compare=False)
 
 
-class CastLine(Action):
+class KeyStroke(Action, metaclass=abc.ABCMeta):
+    config = NotImplemented
+    config_delay_key = NotImplemented
+    keystroke = None
+
     def _prepare(self):
-        pass
+        self.kwargs['burst_min'] = int(self.config[f'{self.config_delay_key}_min'])
+        self.kwargs['burst_max'] = int(self.config[f'{self.config_delay_key}_max'])
 
-    def _perform_action(self):
-        pass
-
-
-class HookFish(Action):
-    def _prepare(self):
-        pass
-
-    def _perform_action(self):
-        pass
+    def _perform_action(self, burst_min, burst_max):
+        if self.keystroke:
+            logger.debug(f'Pressing {self.keystroke} for ({burst_min}-{burst_max})s')
+            self.random_keystroke(key=self.keystroke, burst_min=burst_min, burst_max=burst_max)
 
 
-class ReelIn(Action):
-    def _prepare(self):
-        pass
+class FishingKeyStroke(KeyStroke):
+    config = fishing_config
+    keystroke = InputCode.e
 
-    def _perform_action(self):
-        pass
+
+class CastLine(FishingKeyStroke):
+    config_delay_key = 'cast_delay'
+
+
+class HookFish(FishingKeyStroke):
+    config_delay_key = 'hook_delay'
+
+
+class ReelIn(FishingKeyStroke):
+    config_delay_key = 'reel_delay'
 
 
 class ReleaseTension(Action):
@@ -114,17 +143,20 @@ class ReleaseTension(Action):
         pass
 
     def _perform_action(self):
-        pass
+        logger.debug(f'Releasing {InputCode.e}')
+        self.release_key(InputCode.e)
+        self.captain.purge_queue()
 
 
 class Wait(Action):
     default_priority = 4
 
     def _prepare(self):
-        pass
+        self.kwargs['delay'] = random_wait()
 
-    def _perform_action(self):
-        pass
+    def _perform_action(self, delay):
+        logger.debug(f'Waiting {delay}s')
+        self.wait(delay)
 
 
 class RepairGear(Action):
@@ -172,7 +204,25 @@ class Look(Action):
         pass
 
     def _perform_action(self):
-        pass
+        found = self.captain.eyes.look()
+
+        if found is None:
+            logger.debug(f'CaptainAhab did not notice anything')
+        else:
+            logger.info(f'CaptainAhab saw {found}')
+            if isinstance(found, set):
+                for match in found:
+                    if match is TriggerColors.safe_tension:
+                        self.captain.reel()
+                    elif match is TriggerColors.medium_tension:
+                        self.captain.release()
+                    elif match is TriggerColors.unsafe_tension:
+                        self.captain.release()
+            elif isinstance(found, ImageRegistry):
+                if found is ImageRegistry.line_cast:
+                    self.captain.wait()
+                elif found is ImageRegistry.fish_hooked:
+                    self.captain.hook()
 
 
 __all__ = ['CastLine', 'HookFish', 'ReelIn', 'ReleaseTension', 'Wait', 'RepairGear', 'EquipBait', 'ShiftPosition',

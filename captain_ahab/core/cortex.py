@@ -1,5 +1,9 @@
+import logging
 from .timepieces import StopWatch, GameClock
 from ..utils import Singleton
+
+
+logger = logging.getLogger(__name__)
 
 
 class Cortex(metaclass=Singleton):
@@ -10,6 +14,7 @@ class Cortex(metaclass=Singleton):
         self.timers = {}
 
     async def update(self):
+        logger.debug(f'Updating timers and game clock')
         self.clock.tick()
         for timer in self.timers.values():
             timer.tick()

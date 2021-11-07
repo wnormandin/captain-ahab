@@ -9,15 +9,17 @@ install_requires = (
     'opencv-python',
     'pillow',
     'click',
-    'click-log'
+    'click-log',
+    'python-dotenv'
 )
 
 setup(
     name='nw-captain-ahab',
-    author_email='normandindev@gmail.com',
-    author='Bill Normandin',
+    author_email='bill@pokeybill.us',
+    author='pokeybill',
     packages=find_packages(),
     license='MIT',
     description='Captain Ahab handles your fishing needs',
-    install_requires=install_requires
+    install_requires=install_requires,
+    entry_points={'console_scripts': ['captain-ahab=captain_ahab.cli:cli']}
 )
