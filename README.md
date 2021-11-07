@@ -81,3 +81,6 @@ cast_delay_max = 1.8
 ```
 
 ## Running the captain
+```
+captain-ahab run
+```
