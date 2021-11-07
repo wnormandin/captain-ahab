@@ -88,9 +88,12 @@ class CaptainAhab(metaclass=Singleton):
             self.kill()
 
     def purge_queue(self):
+        qsize = self.action_queue.qsize()
+
         with self.action_queue.mutex:
-            n = self.action_queue.queue.clear()
-            logger.debug(f'Purged queue: {n}')
+            self.action_queue.queue.clear()
+
+        logger.debug(f'Purged queue: {qsize}')
 
     def queue_action(self, action_cls, priority=None):
         action = action_cls(captain=self)
